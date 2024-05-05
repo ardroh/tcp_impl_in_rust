@@ -3,7 +3,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut buf = vec![0u8; 1504];
     loop {
         let nbytes = nic.recv(&mut buf[..])?;
-        let eth_flags = u16::from_be_bytes([buf[0], buf[1]]);
+        // let eth_flags = u16::from_be_bytes([buf[0], buf[1]]);
         let eth_proto = u16::from_be_bytes([buf[2], buf[3]]);
         //https://en.wikipedia.org/wiki/EtherType
         const ETH_P_IP: u16 = 0x0800;
@@ -11,19 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // not IPv4
             continue;
         }
-        eprintln!(
-            "read {} bytes, flags: {:x}, proto: {:x} bytes: {:x?}",
-            nbytes - 4,
-            eth_flags,
-            eth_proto,
-            &buf[4..nbytes]
-        );
         match etherparse::Ipv4HeaderSlice::from_slice(&buf[4..nbytes]) {
-            Ok(header) => {
+            Ok(ip_hdr) => {
                 println!(
-                    "{} -> {} read {} bytes",
-                    header.source_addr(),
-                    header.destination_addr(),
+                    "{} -> {}, protocol: {:?}, read {} bytes",
+                    ip_hdr.source_addr(),
+                    ip_hdr.destination_addr(),
+                    ip_hdr.protocol(),
                     nbytes,
                 );
             }
