@@ -12,7 +12,7 @@ struct Quad {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut connections: HashMap<Quad, tcp::State> = HashMap::new();
-    let nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
+    let mut nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
     let mut buf = vec![0u8; 1504];
     loop {
         let nbytes = nic.recv(&mut buf[..])?;
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 dst: (ip_hdr.destination_addr(), tcp_hdr.destination_port()),
                             })
                             .or_default()
-                            .on_packet(ip_hdr, tcp_hdr, &buf[datai..nbytes]);
+                            .on_packet(&mut nic, ip_hdr, tcp_hdr, &buf[datai..nbytes])?;
                     }
                     Err(e) => {
                         eprintln!("not a TCP packet: {:?}", e);
