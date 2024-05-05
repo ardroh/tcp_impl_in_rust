@@ -18,6 +18,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eth_proto,
             &buf[4..nbytes]
         );
+        match etherparse::Ipv4HeaderSlice::from_slice(&buf[4..nbytes]) {
+            Ok(header) => {
+                println!(
+                    "{} -> {} read {} bytes",
+                    header.source_addr(),
+                    header.destination_addr(),
+                    nbytes,
+                );
+            }
+            Err(e) => {
+                eprintln!("not an IPv4 packet: {:?}", e);
+            }
+        }
     }
     Ok(())
 }
