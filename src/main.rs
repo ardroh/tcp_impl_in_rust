@@ -23,11 +23,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     Ok(tcp_hdr) => {
                         println!(
-                            "{}:{} -> {}:{}",
+                            "TCP packet received {}:{} -> {}:{}, payload size {} bytes",
                             ip_hdr.source_addr(),
                             tcp_hdr.source_port(),
                             ip_hdr.destination_addr(),
                             tcp_hdr.destination_port(),
+                            nbytes - 4 - ip_hdr.slice().len() - tcp_hdr.slice().len()
                         );
                     }
                     Err(e) => {
