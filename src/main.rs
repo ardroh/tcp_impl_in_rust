@@ -1,3 +1,5 @@
+use etherparse::IpNumber;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
     let mut buf = vec![0u8; 1504];
@@ -13,18 +15,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         match etherparse::Ipv4HeaderSlice::from_slice(&buf[4..nbytes]) {
             Ok(ip_hdr) => {
-                println!(
-                    "{} -> {}, protocol: {:?}, read {} bytes",
-                    ip_hdr.source_addr(),
-                    ip_hdr.destination_addr(),
-                    ip_hdr.protocol(),
-                    nbytes,
-                );
+                if ip_hdr.protocol() != IpNumber(6) {
+                    // not TCP
+                    continue;
+                }
+                match etherparse::TcpHeaderSlice::from_slice(&buf[4 + ip_hdr.slice().len()..nbytes])
+                {
+                    Ok(tcp_hdr) => {
+                        println!(
+                            "{}:{} -> {}:{}",
+                            ip_hdr.source_addr(),
+                            tcp_hdr.source_port(),
+                            ip_hdr.destination_addr(),
+                            tcp_hdr.destination_port(),
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("not a TCP packet: {:?}", e);
+                    }
+                }
             }
             Err(e) => {
                 eprintln!("not an IPv4 packet: {:?}", e);
             }
         }
     }
-    Ok(())
 }
