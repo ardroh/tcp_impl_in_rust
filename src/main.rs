@@ -1,6 +1,17 @@
+use std::{collections::HashMap, net::Ipv4Addr};
+
 use etherparse::IpNumber;
 
+mod tcp;
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+struct Quad {
+    src: (Ipv4Addr, u16),
+    dst: (Ipv4Addr, u16),
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut connections: HashMap<Quad, tcp::State> = HashMap::new();
     let nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
     let mut buf = vec![0u8; 1504];
     loop {
@@ -22,14 +33,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match etherparse::TcpHeaderSlice::from_slice(&buf[4 + ip_hdr.slice().len()..nbytes])
                 {
                     Ok(tcp_hdr) => {
-                        println!(
-                            "TCP packet received {}:{} -> {}:{}, payload size {} bytes",
-                            ip_hdr.source_addr(),
-                            tcp_hdr.source_port(),
-                            ip_hdr.destination_addr(),
-                            tcp_hdr.destination_port(),
-                            nbytes - 4 - ip_hdr.slice().len() - tcp_hdr.slice().len()
-                        );
+                        let datai = 4 + ip_hdr.slice().len() + tcp_hdr.slice().len();
+                        connections
+                            .entry(Quad {
+                                src: (ip_hdr.source_addr(), tcp_hdr.source_port()),
+                                dst: (ip_hdr.destination_addr(), tcp_hdr.destination_port()),
+                            })
+                            .or_default()
+                            .on_packet(ip_hdr, tcp_hdr, &buf[datai..nbytes]);
                     }
                     Err(e) => {
                         eprintln!("not a TCP packet: {:?}", e);
